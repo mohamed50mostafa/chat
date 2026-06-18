@@ -147,38 +147,14 @@
         }
         location.reload();
     }
-async function createChannel() {
-    const name = document.getElementById("new-channel-name").value.trim();
-    if(!name) return alert("يرجى كتابة اسم للغرفة");
-    
-    try {
-        const res = await fetch(`${API_BASE_URL}/channels/create/`, {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json", 
-                "Authorization": `Bearer ${accessToken}` 
-            },
-            body: JSON.stringify({ name: name }) // نرسل الاسم فقط
-        });
-
-        // حماية مضافة: نتحقق أولاً إن كان الرد JSON سليم
-        if(res.ok) {
-            document.getElementById("new-channel-name").value = "";
-            loadChannels();
-        } else {
-            const errorText = await res.text(); // نقرأ الخطأ كنص أولاً لمنع انهيار JSON.parse
-            console.error("خطأ من السيرفر:", errorText);
-            alert("فشل إنشاء القناة، راجع الـ Console");
-        }
-    } catch (err) {
-        console.error("خطأ في الشبكة:", err);
-    }
-}
-
 async function loadChannels() {
     try {
         const res = await fetch(`${API_BASE_URL}/channels/`, {
-            headers: { "Authorization": `Bearer ${accessToken}` }
+            headers: { 
+                "Authorization": `Bearer ${accessToken}`,
+                // السطر السحري لتخطي حماية ngrok تلقائياً ومنع خطأ CORS
+                "ngrok-skip-browser-warning": "69420" 
+            }
         });
         
         if (!res.ok) {
@@ -197,7 +173,34 @@ async function loadChannels() {
             ul.appendChild(li);
         });
     } catch (err) {
-        console.log("لم نتمكن من جلب القنوات، تأكد من تخطي صفحة Ngrok ومراجعة الـ CORS");
+        console.log("لم نتمكن من جلب القنوات، تأكد من الـ CORS");
+    }
+}
+
+async function createChannel() {
+    const name = document.getElementById("new-channel-name").value.trim();
+    if(!name) return alert("يرجى كتابة اسم للغرفة");
+    
+    try {
+        const res = await fetch(`${API_BASE_URL}/channels/create/`, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${accessToken}`,
+                "ngrok-skip-browser-warning": "69420" // نضعه هنا أيضاً
+            },
+            body: JSON.stringify({ name: name })
+        });
+
+        if(res.ok) {
+            document.getElementById("new-channel-name").value = "";
+            loadChannels();
+        } else {
+            const errorText = await res.text();
+            console.error("خطأ من السيرفر:", errorText);
+        }
+    } catch (err) {
+        console.error("خطأ في الشبكة:", err);
     }
 }
 
@@ -263,11 +266,16 @@ async function loadChannels() {
         container.scrollTop = container.scrollHeight; 
     }
 
-    function initPusher() {
-        if(!pusher) {
-            pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-        }
+   function initPusher() {
+    if(!pusher) {
+        pusher = new Pusher(PUSHER_KEY, { 
+            cluster: PUSHER_CLUSTER,
+            encrypted: true,
+            forceTLS: true,
+            enabledTransports: ['ws', 'wss', 'xhr_streaming', 'xhr_polling'] // السماح بالبدائل الموثوقة إذا رُفض الـ WebSocket
+        });
     }
+}
 </script>
 </body>
 </html>
