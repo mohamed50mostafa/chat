@@ -58,11 +58,12 @@
         <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
 
         <div class="channel-box">
-            <h3>القنوات</h3>
-            <input type="text" id="new-channel-name" placeholder="اسم القناة الجديدة">
-            <button onclick="createChannel()">+ إنشاء قناة</button>
-            <ul class="channel-list" id="channels-ul"></ul>
-        </div>
+    <h3>إنشاء محادثة</h3>
+    <input type="text" id="new-channel-name" placeholder="اسم المحادثة (مثال: أحمد وأنا)">
+    <input type="text" id="friend-username" placeholder="اسم مستخدم صديقك">
+    <button onclick="createChannel()">+ بدء المحادثة</button>
+    <ul class="channel-list" id="channels-ul"></ul>
+</div>
     </div>
 
     <div class="chat-area">
@@ -154,19 +155,25 @@
         });
     }
 
-    async function createChannel() {
-        const name = document.getElementById("new-channel-name").value;
-        if(!name) return;
-        const res = await fetch(`${API_BASE_URL}/channels/create/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-            body: JSON.stringify({ name: name })
-        });
-        if(res.ok) {
-            document.getElementById("new-channel-name").value = "";
-            loadChannels();
-        }
+ async function createChannel() {
+    const name = document.getElementById("new-channel-name").value;
+    const friend = document.getElementById("friend-username").value;
+    if(!name) return;
+    
+    const res = await fetch(`${API_BASE_URL}/channels/create/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+        body: JSON.stringify({ name: name, friend_username: friend })
+    });
+    if(res.ok) {
+        document.getElementById("new-channel-name").value = "";
+        document.getElementById("friend-username").value = "";
+        loadChannels();
+    } else {
+        const err = await res.json();
+        alert(err.error);
     }
+}
 
     // 3. اختيار القناة والربط مع Pusher
     async function selectChannel(id, name) {
