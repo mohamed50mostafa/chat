@@ -3,28 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام المحادثة الفوري</title>
+    <title>غرف الدردشة العامة</title>
     <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .container { width: 95%; max-width: 1000px; height: 85vh; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 12px; display: flex; overflow: hidden; }
+        
+        /* القائمة الجانبية */
         .sidebar { width: 35%; border-left: 1px solid #e0e0e0; background: #fcfcfc; display: flex; flex-direction: column; padding: 20px; }
         .auth-box, .channel-box { margin-bottom: 15px; }
         input, button { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #e0e0e0; outline: none; font-size: 0.95rem; }
         button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
         button:hover { background: #0056b3; }
+        
+        /* قائمة القنوات العامة */
         .channel-list { list-style: none; margin-top: 10px; overflow-y: auto; flex: 1; }
         .channel-item { padding: 12px; background: #f0f2f5; margin-bottom: 8px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: 500; transition: all 0.2s; }
         .channel-item:hover { background: #e4e6eb; }
         .channel-item.active { background: #007bff; color: white; }
+        
+        /* منطقة الشات الرئيسي */
         .chat-area { width: 65%; display: flex; flex-direction: column; background: #fff; }
-        .chat-header { padding: 20px; background: #ffffff; border-bottom: 1px solid #e0e0e0; font-weight: bold; font-size: 1.2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .chat-header { padding: 20px; background: #ffffff; border-bottom: 1px solid #e0e0e0; font-weight: bold; font-size: 1.2rem; }
         .messages-box { flex: 1; padding: 20px; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 12px; }
-        .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; position: relative; word-wrap: break-word; }
+        
+        /* فقاعات الرسائل */
+        .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
         .msg.me { background: #007bff; color: white; align-self: flex-start; border-bottom-right-radius: 4px; }
         .msg.other { background: #e4e6eb; color: black; align-self: flex-end; border-bottom-left-radius: 4px; }
         .msg-sender { font-size: 0.75rem; display: block; margin-bottom: 4px; font-weight: bold; opacity: 0.8; }
+        
         .input-area { padding: 20px; display: flex; gap: 10px; border-top: 1px solid #e0e0e0; background: white; }
         .input-area input { flex: 1; margin: 0; }
         .input-area button { width: auto; padding: 12px 24px; margin: 0; }
@@ -51,18 +61,17 @@
         <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e0e0e0;">
 
         <div id="channel-section" class="channel-box hidden">
-            <h3>محادثاتك</h3>
-            <input type="text" id="new-channel-name" placeholder="اسم الغرفة / القناة">
-            <input type="text" id="friend-username" placeholder="اسم صديقك (اختياري للشات الثنائي)">
-            <button onclick="createChannel()">+ بدء محادثة جديدة</button>
+            <h3>الغرف العامة المتاحة</h3>
+            <input type="text" id="new-channel-name" placeholder="اسم القناة العامة الجديدة">
+            <button onclick="createChannel()">+ إنشاء غرفة عامة</button>
             <ul class="channel-list" id="channels-ul"></ul>
         </div>
     </div>
 
     <div class="chat-area">
-        <div class="chat-header" id="active-chat-title">يرجى تسجيل الدخول واختيار محادثة</div>
+        <div class="chat-header" id="active-chat-title">يرجى تسجيل الدخول واختيار غرفة دردشة</div>
         <div class="messages-box" id="messages-container"></div>
-        <div class="input-area id-chat-controls">
+        <div class="input-area">
             <input type="text" id="message-input" placeholder="اكتب رسالتك هنا..." onkeypress="if(event.key === 'Enter') sendMessage()" disabled>
             <button id="send-btn" onclick="sendMessage()" disabled>إرسال</button>
         </div>
@@ -70,10 +79,8 @@
 </div>
 
 <script>
-    // --- هام جداً للتوصيل الفوري عبر Vercel ---
-    // إذا كنت تستخدم Ngrok ضع رابطه هنا بدلاً من 127.0.0.1 ليعمل على جهاز صديقك بلا قيود المتصفح
-    // استبدل هذا الرابط بالرابط الظاهر عندك في شاشة Ngrok حالياً
-const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
+    // ضع هنا رابط الـ Ngrok الحالي الخاص بك (تأكد من إضافة /api في النهاية)
+    const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api"; 
     
     let accessToken = localStorage.getItem("access_token") || null;
     let currentUsername = localStorage.getItem("username") || null;
@@ -84,7 +91,6 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
     const PUSHER_KEY = "91042c0154393873a10a";
     const PUSHER_CLUSTER = "eu";
 
-    // تشغيل تلقائي عند فتح الصفحة لفحص الجلسة السابقة
     if (accessToken && currentUsername) {
         showUiForLoggedInUser();
     }
@@ -110,14 +116,14 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
             body: JSON.stringify({ username: u, password: p })
         });
         const data = await res.json();
-        if (res.ok) { alert("تم إنشاء الحساب بنجاح! يمكنك الدخول الآن بنفس البيانات."); } 
+        if (res.ok) { alert("تم إنشاء الحساب! يمكنك الدخول الآن."); } 
         else { alert(data.error || "خطأ في التسجيل"); }
     }
 
     async function login() {
         const u = document.getElementById("username").value.trim();
         const p = document.getElementById("password").value.trim();
-        if(!u || !p) return alert("يرج ملء الحقول");
+        if(!u || !p) return alert("يرجى ملء الحقول");
 
         const res = await fetch(`${API_BASE_URL}/login/`, {
             method: "POST",
@@ -131,14 +137,11 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
             localStorage.setItem("access_token", accessToken);
             localStorage.setItem("username", currentUsername);
             showUiForLoggedInUser();
-        } else { alert("اسم المستخدم أو كلمة المرور غير صحيحة"); }
+        } else { alert("بيانات الدخول غير صحيحة"); }
     }
 
-    // تم إصلاح الدالة لتصبح معرفة وشغالة 100% وتنهي الجلسة بالكامل
     function logout() {
         localStorage.clear();
-        accessToken = null;
-        currentUsername = null;
         if(pusher && currentChannelSubscription) {
             pusher.unsubscribe(currentChannelSubscription);
         }
@@ -150,7 +153,7 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
             headers: { "Authorization": `Bearer ${accessToken}` }
         });
         if (!res.ok) {
-            if(res.status === 401) logout(); // في حال انتهت صلاحية التوكن سجل خروج تلقائي
+            if(res.status === 401) logout();
             return;
         }
         const channels = await res.json();
@@ -167,33 +170,30 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
 
     async function createChannel() {
         const name = document.getElementById("new-channel-name").value.trim();
-        const friend = document.getElementById("friend-username").value.trim();
-        if(!name) return alert("يرجى كتابة اسم للمحادثة");
+        if(!name) return alert("يرجى كتابة اسم للغرفة");
         
+        // تم تعديل الإرسال هنا ليرسل فقط اسم القناة العامة بدون حقل الصديق
         const res = await fetch(`${API_BASE_URL}/channels/create/`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-            body: JSON.stringify({ name: name, friend_username: friend })
+            body: JSON.stringify({ name: name })
         });
         const data = await res.json();
         if(res.ok) {
             document.getElementById("new-channel-name").value = "";
-            document.getElementById("friend-username").value = "";
             loadChannels();
         } else { alert(data.error); }
     }
 
     async function selectChannel(id, name) {
         activeChannelId = id;
-        document.getElementById("active-chat-title").innerText = `المحادثة: ${name}`;
-        
-        // تفعيل أزرار الكتابة والإرسال بمجرد اختيار القناة
+        document.getElementById("active-chat-title").innerText = `غرفة: ${name}`;
         document.getElementById("message-input").disabled = false;
         document.getElementById("send-btn").disabled = false;
         
         loadChannels();
 
-        // جلب أرشيف الرسائل القديمة من قاعدة البيانات
+        // جلب الرسائل السابقة للغرفة العامة
         const res = await fetch(`${API_BASE_URL}/channels/${id}/messages/`, {
             headers: { "Authorization": `Bearer ${accessToken}` }
         });
@@ -205,7 +205,7 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
             messages.forEach(msg => appendMessageHtml(msg.sender_username, msg.content));
         }
 
-        // إعداد البث والاشتراك بالـ Pusher الفوري للقناة المختارة
+        // نقل الاستماع الفوري للغرفة النشطة حالياً عبر Pusher
         if (currentChannelSubscription) { 
             pusher.unsubscribe(currentChannelSubscription); 
         }
@@ -214,7 +214,6 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
         const channel = pusher.subscribe(currentChannelSubscription);
         
         channel.bind('new-message', function(data) {
-            // منع تكرار الرسالة عند المرسل لأنها أضيفت بالفعل في واجهته تلقائياً عند الضغط على إرسال
             if (data.username !== currentUsername) {
                 appendMessageHtml(data.username, data.message);
             }
@@ -226,7 +225,7 @@ const API_BASE_URL = "https://e8ce-197-54-132-227.ngrok-free.app/api";
         const text = input.value.trim();
         if (!text || !activeChannelId) return;
 
-        appendMessageHtml(currentUsername, text); // إضافة فورية في واجهة المرسل
+        appendMessageHtml(currentUsername, text);
         input.value = "";
 
         await fetch(`${API_BASE_URL}/messages/send/`, {
