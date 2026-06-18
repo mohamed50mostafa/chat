@@ -114,28 +114,34 @@
         else { alert(data.error || "فشل التسجيل"); }
     }
 
-    async function login() {
-        const u = document.getElementById("username").value;
-        const p = document.getElementById("password").value;
-        const res = await fetch(`${API_BASE_URL}/login/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: u, password: p })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            accessToken = data.access;
-            currentUsername = u;
-            localStorage.setItem("access_token", accessToken);
-            localStorage.setItem("username", currentUsername);
-            showUiForLoggedInUser();
-        } else { alert("اسم المستخدم أو كلمة المرور خاطئة"); }
+ async function login() {
+    const u = document.getElementById("username").value;
+    const p = document.getElementById("password").value;
+    
+    const res = await fetch(`${API_BASE_URL}/login/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u, password: p })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+        // تحديث المتغيرات العامة فوراً في الـ الذاكرة لقراءتها في الطلبات التالية
+        accessToken = data.access; 
+        currentUsername = u;
+        
+        // حفظها في المتصفح للمستقبل
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("username", currentUsername);
+        
+        // إظهار الواجهة المحدثة وجلب القنوات
+        showUiForLoggedInUser();
+        alert("تم تسجيل الدخول بنجاح!");
+    } else { 
+        alert("اسم المستخدم أو كلمة المرور خاطئة"); 
     }
-
-    function logout() {
-        localStorage.clear();
-        location.reload();
-    }
+}
 
     // 2. إدارة القنوات والمحادثات
     async function loadChannels() {
