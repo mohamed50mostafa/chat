@@ -147,15 +147,45 @@
         }
         location.reload();
     }
+async function createChannel() {
+    const name = document.getElementById("new-channel-name").value.trim();
+    if(!name) return alert("يرجى كتابة اسم للغرفة");
+    
+    try {
+        const res = await fetch(`${API_BASE_URL}/channels/create/`, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${accessToken}` 
+            },
+            body: JSON.stringify({ name: name }) // نرسل الاسم فقط
+        });
 
-    async function loadChannels() {
+        // حماية مضافة: نتحقق أولاً إن كان الرد JSON سليم
+        if(res.ok) {
+            document.getElementById("new-channel-name").value = "";
+            loadChannels();
+        } else {
+            const errorText = await res.text(); // نقرأ الخطأ كنص أولاً لمنع انهيار JSON.parse
+            console.error("خطأ من السيرفر:", errorText);
+            alert("فشل إنشاء القناة، راجع الـ Console");
+        }
+    } catch (err) {
+        console.error("خطأ في الشبكة:", err);
+    }
+}
+
+async function loadChannels() {
+    try {
         const res = await fetch(`${API_BASE_URL}/channels/`, {
             headers: { "Authorization": `Bearer ${accessToken}` }
         });
+        
         if (!res.ok) {
             if(res.status === 401) logout();
             return;
         }
+        
         const channels = await res.json();
         const ul = document.getElementById("channels-ul");
         ul.innerHTML = "";
@@ -166,24 +196,10 @@
             li.onclick = () => selectChannel(ch.id, ch.name);
             ul.appendChild(li);
         });
+    } catch (err) {
+        console.log("لم نتمكن من جلب القنوات، تأكد من تخطي صفحة Ngrok ومراجعة الـ CORS");
     }
-
-    async function createChannel() {
-        const name = document.getElementById("new-channel-name").value.trim();
-        if(!name) return alert("يرجى كتابة اسم للغرفة");
-        
-        // تم تعديل الإرسال هنا ليرسل فقط اسم القناة العامة بدون حقل الصديق
-        const res = await fetch(`${API_BASE_URL}/channels/create/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-            body: JSON.stringify({ name: name })
-        });
-        const data = await res.json();
-        if(res.ok) {
-            document.getElementById("new-channel-name").value = "";
-            loadChannels();
-        } else { alert(data.error); }
-    }
+}
 
     async function selectChannel(id, name) {
         activeChannelId = id;
